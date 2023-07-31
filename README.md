@@ -1,3 +1,3 @@
 # AG_News文本分類
-###### This is an <h6> tag
-`Format one word or one line`
+##目的 
+`>使用Transformer做新聞分類`
