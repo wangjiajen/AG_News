@@ -1,23 +1,17 @@
 # In[]
-import os
-import pandas as pd
+import os # 路徑
+import pandas as pd 
 import numpy as np
 
 import tensorflow as tf
 from tensorflow import keras
 from keras import layers
-
 from keras_preprocessing.sequence import pad_sequences
 from keras.preprocessing.text import Tokenizer
-
-import tensorflow as tf
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import Embedding, LSTM, Dense, Dropout, GlobalMaxPooling1D, Bidirectional
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.utils import to_categorical
-
-import os
-
 
 class TransformerBlock(layers.Layer):
 
@@ -93,10 +87,14 @@ testdata = pd.read_csv('/home/apple/test.csv')
 traindata.columns = ['ClassIndex', 'Title', 'Description']
 testdata.columns = ['ClassIndex', 'Title', 'Description']
 
-traindata['summary'] = traindata['Title'] + ' ' + traindata['Description']
-traindata = traindata.drop(columns=['Title', 'Description'])
-testdata['summary'] = testdata['Title'] + ' ' + testdata['Description']
-testdata = testdata.drop(columns=['Title', 'Description'])
+def combine_title_and_description(df):
+    # Returns a dataset with the title and description fields combined
+    df['summary'] = df[['Title', 'Description']].agg('. '.join, axis=1)
+    df = df.drop(['Title', 'Description'], axis=1)
+    return df
+
+traindata = combine_title_and_description(traindata)
+testdata = combine_title_and_description(testdata)
 
 #Combine Title and Description
 X_data = traindata['summary']  # Combine title and description (better accuracy than using them as separate features)
@@ -114,7 +112,7 @@ maxlen = 100  # 100個文字後切斷評論
 
 # Create and Fit tokenizer
 tok = Tokenizer(num_words=max_words)  # 實例化一個只考慮最常用10000詞的分詞器
-tok.fit_on_texts(X_data.values)  # 建構單詞索引
+tok.fit_on_texts(X_data)  # 建構單詞索引
 
 # 將文字轉成整數list的序列資料
 X_data = tok.texts_to_sequences(X_data)
@@ -135,17 +133,14 @@ training_samples = 96000  # We will be training on 10K samples
 validation_samples = 24000  # We will be validating on 10000 samples
 testing_samples = 7600
 # Split data
-X_train = X_data[:training_samples]
-y_train = y_data[:training_samples]
-X_val = X_data[training_samples:training_samples + validation_samples]
-y_val = y_data[training_samples:training_samples + validation_samples]
-X_test = x_testdata[:testing_samples]
-y_test = y_testdata[:testing_samples]
+X_train, y_train = X_data[:training_samples], y_data[:training_samples]
+X_val, y_val = X_data[training_samples:training_samples + validation_samples], y_data[training_samples:training_samples + validation_samples]
+X_test, y_test = x_testdata[:testing_samples], y_testdata[:testing_samples]
 
 # In[]
 embed_dim = 100  # 嵌入向量總長度
-num_heads = 2  # Number of attention heads
-ff_dim = 100  # Hidden layer size in feed forward network inside transformer
+num_heads = 2  # 較多的注意力頭數量能夠捕捉更多不同的語義特徵，但同時也會增加計算成本
+ff_dim = 100  # 參數控制著 Transformer block 中前向網絡的隱藏層大小
 
 inputs = layers.Input(shape=(maxlen, ))
 embedding_layer = TokenAndPositionEmbedding(maxlen, max_words, embed_dim)
@@ -162,12 +157,12 @@ model = keras.Model(inputs=inputs, outputs=outputs)
 model.summary()
 
 # In[]
-print(X_train.shape)
-print(y_train.shape)
-print(X_test.shape)
-print(y_test.shape)
-print(X_val.shape)
-print(y_val.shape)
+print("X_train shape:", X_train.shape)
+print("y_train shape:", y_train.shape)
+print("X_test shape:", X_test.shape)
+print("y_test shape:", y_test.shape)
+print("X_val shape:", X_val.shape)
+print("y_val shape:", y_val.shape)
 
 # In[]
 # Shuffle the data
@@ -178,19 +173,19 @@ model.compile(optimizer="adam",
               loss="sparse_categorical_crossentropy",
               metrics=["accuracy"])
 EPOCHS = 10
-filepath = "transformer_agnews.best.hdf5"
-checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath,
+checkpoint = tf.keras.callbacks.ModelCheckpoint('transformer_agnews.best.hdf5',
                                                 monitor='val_loss',
                                                 mode='min',
                                                 verbose=1,
                                                 save_best_only=True)
-callbacks_list = [checkpoint]
+early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, verbose=1)
 model.fit(X_train,
           y_train,
-          batch_size=512,
+          batch_size=128,
           epochs=EPOCHS,
           validation_data=(X_val, y_val),
-          callbacks=callbacks_list)
+          callbacks=[checkpoint, early_stopping]
+         )
 
 # In[]
 model.load_weights("transformer_agnews.best.hdf5")
@@ -214,9 +209,8 @@ from mlxtend.plotting import plot_confusion_matrix
 import matplotlib.pyplot as plt
 import numpy as np
 
-labels = [
-    'World News', 'Sports News', 'Business News', 'Science-Technology News'
-]
+labels = ['World News', 'Sports News', 'Business News', 'Science-Technology News']
+
 preds = [np.argmax(i) for i in prediction]
 cm = confusion_matrix(y_test, preds)
 plt.figure()
@@ -226,22 +220,9 @@ plt.xticks(range(4), labels, fontsize=15)
 plt.yticks(range(4), labels, fontsize=15)
 plt.show()
 plt.savefig('test.png', bbox_inches="tight")
-# print(sklearn.metrics.confusion_matrix(y_test,np.argmax(prediction, axis = 1), labels=None, sample_weight=None))
-# print(sklearn.metrics.classification_report (y_test, np.argmax(prediction, axis = 1),label=[0,1]))
-
 y_pred = np.argmax(prediction, axis=1)
 
-# accuracy = accuracy_score(y_test, y_pred)
-# precision = precision_score(y_test, y_pred)
-# recall = recall_score(y_test, y_pred)
-# f1 = f1_score(y_test, y_pred)
-
-# print(f"Accuracy: {accuracy}")
-# print(f"Precision: {precision}")
-# print(f"Recall: {recall}")
-# print(f"F1: {f1}")
 from sklearn.metrics import classification_report
 
 print(classification_report(y_test, y_pred, labels=[0, 1, 2, 3]))
 
-# %%
