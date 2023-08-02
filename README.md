@@ -9,6 +9,6 @@
 ***[程式碼](https://github.com/wangjiajen/AG_News/blob/main/agnews.py)**<br>
 
 ***參考資料**<br>
-[1]: https://keras.io/examples/nlp/text_classification_from_scratch/<br>
+[1]:https://keras.io/examples/nlp/text_classification_from_scratch/<br>
 [2]:https://www.kaggle.com/code/jannesklaas/17-nlp-and-word-embeddings/notebook<br>
 [3]:https://www.kaggle.com/datasets/amananandrai/ag-news-classification-dataset<br>
