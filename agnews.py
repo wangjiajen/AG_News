@@ -80,8 +80,8 @@ class TokenAndPositionEmbedding(layers.Layer):
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 # In[]
 #資料前處理
-traindata = pd.read_csv('/home/apple/train.csv')
-testdata = pd.read_csv('/home/apple/test.csv')
+traindata = pd.read_csv('/home/apple/AG_News/data/train.csv')
+testdata = pd.read_csv('/home/apple/AG_News/data/test.csv')
 
 #Set Column Names
 traindata.columns = ['ClassIndex', 'Title', 'Description']
